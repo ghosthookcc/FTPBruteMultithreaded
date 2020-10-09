@@ -1,0 +1,7 @@
+C:\Users\kaspe\source\repos\FTPBruteProject\bin\Debug\FTPBruteProject.exe.config
+C:\Users\kaspe\source\repos\FTPBruteProject\bin\Debug\FTPBruteProject.exe
+C:\Users\kaspe\source\repos\FTPBruteProject\bin\Debug\FTPBruteProject.pdb
+C:\Users\kaspe\source\repos\FTPBruteProject\obj\Debug\FTPBruteProject.csprojAssemblyReference.cache
+C:\Users\kaspe\source\repos\FTPBruteProject\obj\Debug\FTPBruteProject.csproj.CoreCompileInputs.cache
+C:\Users\kaspe\source\repos\FTPBruteProject\obj\Debug\FTPBruteProject.exe
+C:\Users\kaspe\source\repos\FTPBruteProject\obj\Debug\FTPBruteProject.pdb
